@@ -1,41 +1,31 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useCallback } from "react";
 import type { Incident } from "@/types/incident";
 
 export const useIncidents = () => {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  useEffect(() => {
-    let ignore = false;
+  const loadIncidents = useCallback(async () => {
+    if (isInitialized) return;
 
-    const load = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch("/api/incidents", { cache: "no-store" });
-        const data = (await res.json()) as { items: Incident[] };
-        if (!ignore) {
-          setIncidents(data.items ?? []);
-        }
-      } catch (err) {
-        if (!ignore) {
-          setError((err as Error).message);
-        }
-      } finally {
-        if (!ignore) {
-          setLoading(false);
-        }
-      }
-    };
+    setLoading(true);
+    setIsInitialized(true);
 
-    load();
+    try {
+      const res = await fetch("/api/incidents", { cache: "no-store" });
+      const data = (await res.json()) as { items: Incident[] };
+      setIncidents(data.items ?? []);
+      setError(null);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }, [isInitialized]);
 
-    return () => {
-      ignore = true;
-    };
-  }, []);
-
-  return { incidents, setIncidents, loading, error };
+  return { incidents, setIncidents, loading, error, loadIncidents };
 };

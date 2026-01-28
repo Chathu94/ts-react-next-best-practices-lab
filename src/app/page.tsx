@@ -4,12 +4,25 @@ import DeployNotes from "@/components/DeployNotes";
 import { deployNotes } from "@/lib/data";
 import type { Incident } from "@/types/incident";
 
-const getIncidentCount = async () => {
-  const response = await fetch("http://localhost:3000/api/incidents", {
-    next: { revalidate: 60 }
-  });
-  const data = (await response.json()) as { items: Incident[] };
-  return data.items?.length ?? 0;
+const getIncidentCount = async (): Promise<number> => {
+  try {
+    const response = await fetch("http://localhost:3000/api/incidents", {
+      next: { revalidate: 60 },
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch incidents: ${response.status}`);
+    }
+
+    const data = (await response.json()) as { items: Incident[] };
+    return data.items?.length ?? 0;
+  } catch (error) {
+    console.error("Error fetching incident count:", error);
+    return 0;
+  }
 };
 
 export default async function HomePage() {
