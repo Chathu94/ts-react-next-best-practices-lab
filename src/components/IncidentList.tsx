@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import Link from "next/link";
-import type { Incident } from "@/types/incident";
+import type { IncidentStatus } from "@/types/incident";
 import { formatDate, scoreIncident } from "@/lib/format";
 import { useIncidents } from "@/hooks/useIncidents";
 
@@ -15,13 +15,12 @@ const statusStyles: Record<string, string> = {
 export default function IncidentList() {
   const { incidents, setIncidents, loading, error } = useIncidents();
   const [query, setQuery] = useState("");
-  const [filtered, setFiltered] = useState<Incident[]>([]);
-  const [status, setStatus] = useState("all");
+  const [status, setStatus] = useState<IncidentStatus | "all">("all");
   const [lastAction, setLastAction] = useState("");
 
-  useEffect(() => {
+  const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    const next = incidents.filter((incident) => {
+    return incidents.filter((incident) => {
       const title = incident.title?.toLowerCase() ?? "";
       const summary = incident.summary?.toLowerCase() ?? "";
       const matchesQuery = title.includes(normalized) || summary.includes(normalized);
@@ -30,32 +29,34 @@ export default function IncidentList() {
       }
       return matchesQuery && incident.status === status;
     });
-    setFiltered(next);
   }, [incidents, query, status]);
-
-  useEffect(() => {
-    if (lastAction) {
-      const timer = window.setTimeout(() => setLastAction(""), 2500);
-      return () => window.clearTimeout(timer);
-    }
-  }, [lastAction]);
 
   const incidentScore = useMemo(() => {
     return filtered.reduce((acc, incident) => acc + scoreIncident(incident.summary), 0);
   }, [filtered]);
 
-  const moveIncident = (index: number, direction: "up" | "down") => {
+  const moveIncident = useCallback((index: number, direction: "up" | "down") => {
     const targetIndex = direction === "up" ? index - 1 : index + 1;
     if (targetIndex < 0 || targetIndex >= filtered.length) return;
 
-    const updated = [...filtered];
-    const current = updated[index];
-    updated[index] = updated[targetIndex] as Incident;
-    updated[targetIndex] = current as Incident;
-    setFiltered(updated);
-    setIncidents(updated);
-    setLastAction(`Moved ${current?.id ?? "incident"} ${direction}`);
-  };
+    const currentItem = filtered[index];
+    const targetItem = filtered[targetIndex];
+    if (!currentItem || !targetItem) return;
+
+    setIncidents((prev) => {
+      const copy = [...prev];
+      const realIndex1 = copy.findIndex((i) => i.id === currentItem.id);
+      const realIndex2 = copy.findIndex((i) => i.id === targetItem.id);
+      if (realIndex1 !== -1 && realIndex2 !== -1) {
+        copy[realIndex1] = targetItem;
+        copy[realIndex2] = currentItem;
+      }
+      return copy;
+    });
+
+    setLastAction(`Moved ${currentItem.id} ${direction}`);
+    setTimeout(() => setLastAction(""), 2500);
+  }, [filtered, setIncidents]);
 
   if (loading) {
     return <div className="card">Loading incidents...</div>;
@@ -81,7 +82,7 @@ export default function IncidentList() {
         <select
           className="rounded-md border border-slate-200 px-2 py-2 text-sm"
           value={status}
-          onChange={(event) => setStatus(event.target.value)}
+          onChange={(event) => setStatus(event.target.value as IncidentStatus | "all")}
         >
           <option value="all">All</option>
           <option value="open">Open</option>
@@ -95,7 +96,7 @@ export default function IncidentList() {
 
       <div className="mt-4 space-y-3">
         {filtered.map((incident, index) => (
-          <div key={index} className="rounded-md border border-slate-200 p-3">
+          <div key={incident.id} className="rounded-md border border-slate-200 p-3">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <Link className="text-sm font-semibold" href={`/incidents/${incident.id}`}>

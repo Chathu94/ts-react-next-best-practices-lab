@@ -1,9 +1,13 @@
+export type IncidentSeverity = "low" | "medium" | "high";
+export type IncidentStatus = "open" | "monitoring" | "closed";
+export type CheckStatus = "ok" | "warn" | "down" | "pending";
+
 export type Incident = {
   id: string;
   title?: string;
   summary?: string;
-  severity?: "low" | "medium" | "high";
-  status?: "open" | "monitoring" | "closed";
+  severity?: IncidentSeverity;
+  status?: IncidentStatus;
   owner?: string;
   createdAt?: string;
   tags?: string[];
@@ -19,6 +23,6 @@ export type DeployNote = {
 export type CheckResult = {
   id: string;
   label?: string;
-  status?: "ok" | "warn" | "down" | "pending";
+  status?: CheckStatus;
   detail?: string;
 };
