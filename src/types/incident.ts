@@ -22,3 +22,7 @@ export type CheckResult = {
   status?: "ok" | "warn" | "down" | "pending";
   detail?: string;
 };
+
+export type TeamSnapshotProps = {
+  totalIncidents: number;
+};

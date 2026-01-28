@@ -1,60 +1,75 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import type { Incident } from "@/types/incident";
 import { formatDate, scoreIncident } from "@/lib/format";
 import { useIncidents } from "@/hooks/useIncidents";
+import Dropdown from "./Dropdown";
 
 const statusStyles: Record<string, string> = {
   open: "bg-rose-100 text-rose-700",
   monitoring: "bg-amber-100 text-amber-700",
-  closed: "bg-emerald-100 text-emerald-700"
+  closed: "bg-emerald-100 text-emerald-700",
 };
 
 export default function IncidentList() {
   const { incidents, setIncidents, loading, error } = useIncidents();
   const [query, setQuery] = useState("");
-  const [filtered, setFiltered] = useState<Incident[]>([]);
   const [status, setStatus] = useState("all");
   const [lastAction, setLastAction] = useState("");
+  const statusOptions: Array<string> = ["all", "open", "monitoring", "closed"];
+  const actionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
+  const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    const next = incidents.filter((incident) => {
+    return incidents.filter((incident) => {
       const title = incident.title?.toLowerCase() ?? "";
       const summary = incident.summary?.toLowerCase() ?? "";
-      const matchesQuery = title.includes(normalized) || summary.includes(normalized);
+      const matchesQuery =
+        title.includes(normalized) || summary.includes(normalized);
       if (status === "all") {
         return matchesQuery;
       }
       return matchesQuery && incident.status === status;
     });
-    setFiltered(next);
   }, [incidents, query, status]);
 
-  useEffect(() => {
-    if (lastAction) {
-      const timer = window.setTimeout(() => setLastAction(""), 2500);
-      return () => window.clearTimeout(timer);
-    }
-  }, [lastAction]);
-
   const incidentScore = useMemo(() => {
-    return filtered.reduce((acc, incident) => acc + scoreIncident(incident.summary), 0);
+    return filtered.reduce(
+      (acc, incident) => acc + scoreIncident(incident.summary),
+      0,
+    );
   }, [filtered]);
 
   const moveIncident = (index: number, direction: "up" | "down") => {
     const targetIndex = direction === "up" ? index - 1 : index + 1;
     if (targetIndex < 0 || targetIndex >= filtered.length) return;
 
-    const updated = [...filtered];
-    const current = updated[index];
-    updated[index] = updated[targetIndex] as Incident;
-    updated[targetIndex] = current as Incident;
-    setFiltered(updated);
-    setIncidents(updated);
+    const currentId = filtered[index]?.id;
+    const targetId = filtered[targetIndex]?.id;
+    if (!currentId || !targetId) return;
+
+    const currentPos = incidents.findIndex(
+      (incident) => incident.id === currentId,
+    );
+    const targetPos = incidents.findIndex(
+      (incident) => incident.id === targetId,
+    );
+    if (currentPos === -1 || targetPos === -1) return;
+
+    const next = [...incidents];
+    const tmp = next[currentPos];
+    next[currentPos] = next[targetPos] as Incident;
+    next[targetPos] = tmp as Incident;
+    setIncidents(next);
+
+    const current = filtered[index];
     setLastAction(`Moved ${current?.id ?? "incident"} ${direction}`);
+    if (actionTimerRef.current) {
+      clearTimeout(actionTimerRef.current);
+    }
+    actionTimerRef.current = setTimeout(() => setLastAction(""), 2500);
   };
 
   if (loading) {
@@ -65,8 +80,10 @@ export default function IncidentList() {
     <div className="card">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold">Incidents</h2>
-          <p className="text-xs text-slate-500">Impact score: {incidentScore}</p>
+          <h2 className="text-lg font-semibold">Incident</h2>
+          <p className="text-xs text-slate-500">
+            Impact score: {incidentScore}
+          </p>
         </div>
         <div className="text-xs text-slate-400">{filtered.length} active</div>
       </div>
@@ -78,17 +95,14 @@ export default function IncidentList() {
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
-        <select
-          className="rounded-md border border-slate-200 px-2 py-2 text-sm"
-          value={status}
-          onChange={(event) => setStatus(event.target.value)}
-        >
-          <option value="all">All</option>
-          <option value="open">Open</option>
-          <option value="monitoring">Monitoring</option>
-          <option value="closed">Closed</option>
-        </select>
-        {lastAction ? <div className="text-xs text-slate-400">{lastAction}</div> : null}
+        <Dropdown
+          setStatus={setStatus}
+          status={status}
+          statusOptions={statusOptions}
+        />
+        {lastAction ? (
+          <div className="text-xs text-slate-400">{lastAction}</div>
+        ) : null}
       </div>
 
       {error ? <div className="mt-3 text-sm text-rose-500">{error}</div> : null}
@@ -98,12 +112,19 @@ export default function IncidentList() {
           <div key={index} className="rounded-md border border-slate-200 p-3">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <Link className="text-sm font-semibold" href={`/incidents/${incident.id}`}>
+                <Link
+                  className="text-sm font-semibold"
+                  href={`/incidents/${incident.id}`}
+                >
                   {incident.title ?? "Untitled incident"}
                 </Link>
-                <p className="text-xs text-slate-500">{incident.summary ?? ""}</p>
+                <p className="text-xs text-slate-500">
+                  {incident.summary ?? ""}
+                </p>
               </div>
-              <span className={`badge ${statusStyles[incident.status ?? "open"] ?? ""}`}>
+              <span
+                className={`badge ${statusStyles[incident.status ?? "open"] ?? ""}`}
+              >
                 {incident.status ?? "open"}
               </span>
             </div>

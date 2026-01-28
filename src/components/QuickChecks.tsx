@@ -1,52 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import type { CheckResult } from "@/types/incident";
+import { useSyncExternalStore } from "react";
+import { checksStore } from "@/lib/stores/checksStore";
 
 const badgeMap: Record<string, string> = {
   ok: "bg-emerald-100 text-emerald-700",
   warn: "bg-amber-100 text-amber-700",
   down: "bg-rose-100 text-rose-700",
-  pending: "bg-slate-100 text-slate-500"
+  pending: "bg-slate-100 text-slate-500",
 };
 
 export default function QuickChecks() {
-  const [checks, setChecks] = useState<CheckResult[]>([]);
-  const [refreshAt, setRefreshAt] = useState<Date | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    setRefreshAt(new Date());
-  }, []);
-
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const response = await fetch("/api/checks");
-        const data = (await response.json()) as { items: CheckResult[] };
-        setChecks(data.items ?? []);
-        setError("");
-      } catch (err) {
-        setError((err as Error).message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (refreshAt) {
-      load();
-    }
-  }, [refreshAt]);
-
-  useEffect(() => {
-    if (!refreshAt) return;
-    const timer = window.setInterval(() => {
-      setRefreshAt(new Date());
-    }, 20000);
-    return () => window.clearInterval(timer);
-  }, [refreshAt]);
+  const snapshot = useSyncExternalStore(
+    checksStore.subscribe,
+    checksStore.getSnapshot,
+    checksStore.getSnapshot,
+  );
 
   return (
     <div className="card">
@@ -57,24 +26,31 @@ export default function QuickChecks() {
         </div>
         <button
           className="rounded border border-slate-200 px-2 py-1 text-xs"
-          onClick={() => setRefreshAt(new Date())}
+          onClick={() => checksStore.refresh()}
         >
           Refresh now
         </button>
       </div>
 
-      {error ? <div className="mt-3 text-sm text-rose-500">{error}</div> : null}
+      {snapshot.error ? (
+        <div className="mt-3 text-sm text-rose-500">{snapshot.error}</div>
+      ) : null}
 
       <div className="mt-3 space-y-2">
-        {checks.map((check) => (
-          <div key={check.id} className="flex items-center justify-between text-sm">
+        {snapshot.items.map((check) => (
+          <div
+            key={check.id}
+            className="flex items-center justify-between text-sm"
+          >
             <span>{check.label ?? "Check"}</span>
-            <span className={`badge ${badgeMap[check.status ?? "pending"]}`}>{
-              check.status ?? "pending"
-            }</span>
+            <span className={`badge ${badgeMap[check.status ?? "pending"]}`}>
+              {check.status ?? "pending"}
+            </span>
           </div>
         ))}
-        {loading ? <div className="text-xs text-slate-400">Syncing...</div> : null}
+        {snapshot.loading || snapshot.isRefreshing ? (
+          <div className="text-xs text-slate-400">Syncing...</div>
+        ) : null}
       </div>
     </div>
   );

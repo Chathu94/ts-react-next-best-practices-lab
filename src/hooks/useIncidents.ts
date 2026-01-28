@@ -1,41 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import type { Incident } from "@/types/incident";
+import { useCallback, useSyncExternalStore } from "react";
+import { incidentsStore } from "@/lib/stores/incidentsStore";
 
 export const useIncidents = () => {
-  const [incidents, setIncidents] = useState<Incident[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const snapshot = useSyncExternalStore(
+    incidentsStore.subscribe,
+    incidentsStore.getSnapshot,
+    incidentsStore.getSnapshot,
+  );
 
-  useEffect(() => {
-    let ignore = false;
-
-    const load = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch("/api/incidents", { cache: "no-store" });
-        const data = (await res.json()) as { items: Incident[] };
-        if (!ignore) {
-          setIncidents(data.items ?? []);
-        }
-      } catch (err) {
-        if (!ignore) {
-          setError((err as Error).message);
-        }
-      } finally {
-        if (!ignore) {
-          setLoading(false);
-        }
-      }
-    };
-
-    load();
-
-    return () => {
-      ignore = true;
-    };
+  const setIncidents = useCallback((items: Incident[]) => {
+    incidentsStore.setItems(items);
   }, []);
 
-  return { incidents, setIncidents, loading, error };
+  return {
+    incidents: snapshot.items,
+    setIncidents,
+    loading: snapshot.loading,
+    error: snapshot.error,
+  };
 };
