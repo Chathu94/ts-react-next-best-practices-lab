@@ -1,17 +1,9 @@
 import Link from "next/link";
-import type { Incident } from "@/types/incident";
 import { formatDate } from "@/lib/format";
-
-const getIncident = async (id: string) => {
-  const response = await fetch(`http://localhost:3000/api/incidents/${id}`, {
-    cache: "no-store"
-  });
-  const data = (await response.json()) as { item?: Incident };
-  return data.item as Incident;
-};
+import { getIncident } from "@/services/incident.c";
 
 export default async function IncidentDetailPage({
-  params
+  params,
 }: {
   params: { id: string };
 }) {
@@ -23,7 +15,9 @@ export default async function IncidentDetailPage({
         ← Back to board
       </Link>
       <div className="mt-3">
-        <h2 className="text-2xl font-semibold">{incident.title ?? "Incident"}</h2>
+        <h2 className="text-2xl font-semibold">
+          {incident.title ?? "Incident"}
+        </h2>
         <p className="mt-2 text-sm text-slate-600">{incident.summary ?? ""}</p>
       </div>
       <div className="mt-4 grid gap-3 text-sm text-slate-600 md:grid-cols-2">
