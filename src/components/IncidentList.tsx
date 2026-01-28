@@ -46,7 +46,11 @@ export default function IncidentList() {
 
   const moveIncident = (index: number, direction: "up" | "down") => {
     const targetIndex = direction === "up" ? index - 1 : index + 1;
-    if (targetIndex < 0 || targetIndex >= filtered.length) return;
+    const isOutOfBounds = targetIndex < 0 || targetIndex >= filtered.length;
+
+    if (isOutOfBounds) {
+      return;
+    }
 
     const updated = [...filtered];
     const current = updated[index];
