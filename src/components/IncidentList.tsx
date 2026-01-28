@@ -9,7 +9,7 @@ import { useIncidents } from "@/hooks/useIncidents";
 const statusStyles: Record<string, string> = {
   open: "bg-rose-100 text-rose-700",
   monitoring: "bg-amber-100 text-amber-700",
-  closed: "bg-emerald-100 text-emerald-700"
+  closed: "bg-emerald-100 text-emerald-700",
 };
 
 export default function IncidentList() {
@@ -24,7 +24,8 @@ export default function IncidentList() {
     const next = incidents.filter((incident) => {
       const title = incident.title?.toLowerCase() ?? "";
       const summary = incident.summary?.toLowerCase() ?? "";
-      const matchesQuery = title.includes(normalized) || summary.includes(normalized);
+      const matchesQuery =
+        title.includes(normalized) || summary.includes(normalized);
       if (status === "all") {
         return matchesQuery;
       }
@@ -41,7 +42,10 @@ export default function IncidentList() {
   }, [lastAction]);
 
   const incidentScore = useMemo(() => {
-    return filtered.reduce((acc, incident) => acc + scoreIncident(incident.summary), 0);
+    return filtered.reduce(
+      (acc, incident) => acc + scoreIncident(incident.summary),
+      0,
+    );
   }, [filtered]);
 
   const moveIncident = (index: number, direction: "up" | "down") => {
@@ -66,7 +70,9 @@ export default function IncidentList() {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold">Incidents</h2>
-          <p className="text-xs text-slate-500">Impact score: {incidentScore}</p>
+          <p className="text-xs text-slate-500">
+            Impact score: {incidentScore}
+          </p>
         </div>
         <div className="text-xs text-slate-400">{filtered.length} active</div>
       </div>
@@ -88,7 +94,9 @@ export default function IncidentList() {
           <option value="monitoring">Monitoring</option>
           <option value="closed">Closed</option>
         </select>
-        {lastAction ? <div className="text-xs text-slate-400">{lastAction}</div> : null}
+        {lastAction ? (
+          <div className="text-xs text-slate-400">{lastAction}</div>
+        ) : null}
       </div>
 
       {error ? <div className="mt-3 text-sm text-rose-500">{error}</div> : null}
@@ -98,12 +106,19 @@ export default function IncidentList() {
           <div key={index} className="rounded-md border border-slate-200 p-3">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <Link className="text-sm font-semibold" href={`/incidents/${incident.id}`}>
+                <Link
+                  className="text-sm font-semibold"
+                  href={`/incidents/${incident.id}`}
+                >
                   {incident.title ?? "Untitled incident"}
                 </Link>
-                <p className="text-xs text-slate-500">{incident.summary ?? ""}</p>
+                <p className="text-xs text-slate-500">
+                  {incident.summary ?? ""}
+                </p>
               </div>
-              <span className={`badge ${statusStyles[incident.status ?? "open"] ?? ""}`}>
+              <span
+                className={`badge ${statusStyles[incident.status ?? "open"] ?? ""}`}
+              >
                 {incident.status ?? "open"}
               </span>
             </div>
