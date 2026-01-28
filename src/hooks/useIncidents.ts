@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Incident } from "@/types/incident";
+import { incidentService } from "@/services/incidentService";
 
 export const useIncidents = () => {
   const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -14,10 +15,9 @@ export const useIncidents = () => {
     const load = async () => {
       setLoading(true);
       try {
-        const res = await fetch("/api/incidents", { cache: "no-store" });
-        const data = (await res.json()) as { items: Incident[] };
+        const data = await incidentService.getIncidents();
         if (!ignore) {
-          setIncidents(data.items ?? []);
+          setIncidents(data);
         }
       } catch (err) {
         if (!ignore) {
