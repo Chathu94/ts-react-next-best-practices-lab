@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import type { CheckResult } from "@/types/incident";
+import { useQuickChecks } from "@/hooks/useQuickChecks";
 
 const badgeMap: Record<string, string> = {
   ok: "bg-emerald-100 text-emerald-700",
@@ -11,42 +10,7 @@ const badgeMap: Record<string, string> = {
 };
 
 export default function QuickChecks() {
-  const [checks, setChecks] = useState<CheckResult[]>([]);
-  const [refreshAt, setRefreshAt] = useState<Date | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    setRefreshAt(new Date());
-  }, []);
-
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const response = await fetch("/api/checks");
-        const data = (await response.json()) as { items: CheckResult[] };
-        setChecks(data.items ?? []);
-        setError("");
-      } catch (err) {
-        setError((err as Error).message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (refreshAt) {
-      load();
-    }
-  }, [refreshAt]);
-
-  useEffect(() => {
-    if (!refreshAt) return;
-    const timer = window.setInterval(() => {
-      setRefreshAt(new Date());
-    }, 20000);
-    return () => window.clearInterval(timer);
-  }, [refreshAt]);
+  const { checks, loading, error, refresh } = useQuickChecks();
 
   return (
     <div className="card">
@@ -57,7 +21,7 @@ export default function QuickChecks() {
         </div>
         <button
           className="rounded border border-slate-200 px-2 py-1 text-xs"
-          onClick={() => setRefreshAt(new Date())}
+          onClick={refresh}
         >
           Refresh now
         </button>
