@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import type { CheckResult } from "@/types/incident";
+import { useEffect, useState, useCallback } from "react";
+import type { CheckResult, CheckStatus } from "@/types/incident";
+import type { ApiResponse } from "@/types/api";
 
-const badgeMap: Record<string, string> = {
+const badgeMap: Record<CheckStatus | "pending", string> = {
   ok: "bg-emerald-100 text-emerald-700",
   warn: "bg-amber-100 text-amber-700",
   down: "bg-rose-100 text-rose-700",
@@ -12,41 +13,30 @@ const badgeMap: Record<string, string> = {
 
 export default function QuickChecks() {
   const [checks, setChecks] = useState<CheckResult[]>([]);
-  const [refreshAt, setRefreshAt] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    setRefreshAt(new Date());
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await fetch("/api/checks");
+      const data = (await response.json()) as ApiResponse<CheckResult>;
+      setChecks(data.items ?? []);
+      setError("");
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const response = await fetch("/api/checks");
-        const data = (await response.json()) as { items: CheckResult[] };
-        setChecks(data.items ?? []);
-        setError("");
-      } catch (err) {
-        setError((err as Error).message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (refreshAt) {
+    load();
+    const timer = setInterval(() => {
       load();
-    }
-  }, [refreshAt]);
-
-  useEffect(() => {
-    if (!refreshAt) return;
-    const timer = window.setInterval(() => {
-      setRefreshAt(new Date());
     }, 20000);
-    return () => window.clearInterval(timer);
-  }, [refreshAt]);
+    return () => clearInterval(timer);
+  }, [load]);
 
   return (
     <div className="card">
@@ -57,9 +47,10 @@ export default function QuickChecks() {
         </div>
         <button
           className="rounded border border-slate-200 px-2 py-1 text-xs"
-          onClick={() => setRefreshAt(new Date())}
+          onClick={load} 
+          disabled={loading}
         >
-          Refresh now
+          {loading ? "Refreshing..." : "Refresh now"}
         </button>
       </div>
 
@@ -69,12 +60,14 @@ export default function QuickChecks() {
         {checks.map((check) => (
           <div key={check.id} className="flex items-center justify-between text-sm">
             <span>{check.label ?? "Check"}</span>
-            <span className={`badge ${badgeMap[check.status ?? "pending"]}`}>{
-              check.status ?? "pending"
-            }</span>
+            <span className={`badge ${badgeMap[check.status ?? "pending"]}`}>
+              {check.status ?? "pending"}
+            </span>
           </div>
         ))}
-        {loading ? <div className="text-xs text-slate-400">Syncing...</div> : null}
+        {loading && checks.length === 0 ? (
+          <div className="text-xs text-slate-400">Syncing...</div>
+        ) : null}
       </div>
     </div>
   );
